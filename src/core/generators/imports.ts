@@ -67,7 +67,7 @@ export const generateMutatorImports = (
               : ''
           }`
         : `{ ${mutator.name}${
-            mutator.hasErrorType ? `, ${mutator.errorTypeName}` : ''
+            mutator.hasErrorType ? `, type ${mutator.errorTypeName}` : ''
           } }`;
 
       return `import ${importDefault} from '${oneMore ? '../' : ''}${
@@ -133,7 +133,9 @@ export const addDependency = ({
       const depsString = uniq(
         deps
           .filter((e) => !e.default && !e.syntheticDefaultImport)
-          .map(({ name, alias }) => (alias ? `${name} as ${alias}` : name)),
+          .map(({ name, alias, importAs }) =>
+            importAs ? importAs : alias ? `${name} as ${alias}` : name,
+          ),
       ).join(',\n  ');
 
       let importString = '';
