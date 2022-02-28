@@ -1,7 +1,7 @@
 {
-  "name": "orval",
+  "name": "elder-orval",
   "description": "A swagger client generator for typescript",
-  "version": "6.6.4",
+  "version": "6.6.4-elder",
   "license": "MIT",
   "files": [
     "dist"
@@ -90,6 +90,7 @@
     "tsup": "^5.11.13",
     "typescript": "^4.5.5",
     "vitest": "^0.3.6",
+    "yalc": "^1.0.0-pre.53",
     "zx": "^4.2.0"
   },
   "dependencies": {
