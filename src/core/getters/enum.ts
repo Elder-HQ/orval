@@ -8,9 +8,7 @@ export const getEnum = (value: string, type: string, enumName: string) => {
 
   enumValue += `\n\n`;
 
-  enumValue += '// eslint-disable-next-line @typescript-eslint/no-redeclare\n';
-
-  enumValue += `export const ${enumName} = {\n${implementation}};\n`;
+  enumValue += `export const ${enumName}Values = {\n${implementation}};\n`;
 
   return enumValue;
 };
