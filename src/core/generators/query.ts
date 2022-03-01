@@ -82,6 +82,7 @@ const REACT_QUERY_DEPENDENCIES: GeneratorDependency[] = [
       { name: 'QueryFunction', importAs: 'type QueryFunction' },
       { name: 'MutationFunction', importAs: 'type MutationFunction' },
       { name: 'UseQueryResult', importAs: 'type UseQueryResult' },
+      { name: 'UseMutationResult', importAs: 'type UseMutationResult' },
       {
         name: 'UseInfiniteQueryResult',
         importAs: 'type UseInfiniteQueryResult',
@@ -314,7 +315,7 @@ const generateQueryArguments = ({
         isMutatorHook
           ? `ReturnType<typeof use${pascal(operationName)}Hook>`
           : `typeof ${operationName}`
-      }>, TError,${definitions ? `{${definitions}}` : 'TVariables'}, TContext>`;
+      }>, ${errorType}, {${definitions}}, unknown>`;
 
   if (!isRequestOptions) {
     return `${type ? 'queryOptions' : 'mutationOptions'}?: ${definition}`;
@@ -565,17 +566,24 @@ const generateQueryHook = (
           : `typeof ${operationName}`
   }>`
 
+  const returnType =
+      outputClient !== OutputClient.SVELTE_QUERY
+          ? ` UseMutationResult<${dataType}, ${errorType}, {${definitions}}, unknown>`
+          : `UseMutationStoreResult<AsyncReturnType<${
+              mutator?.isHook
+                  ? `ReturnType<typeof use${pascal(operationName)}Hook>`
+                  : `typeof ${operationName}`
+          }>, ${errorType}, ${dataType}, QueryKey>`;
+
   return `
-    export const ${camel(`use-${operationName}`)} = <TError = ${errorType},
-    ${!definitions ? `TVariables = void,` : ''}
-    TContext = unknown>(${generateQueryArguments({
+    export const ${camel(`use-${operationName}`)} = (${generateQueryArguments({
       operationName,
       definitions,
       mutator,
       isRequestOptions,
       errorType,
       dataType,
-    })}) => {
+    })}): ${returnType} => {
       ${
         isRequestOptions
           ? `const {mutation: mutationOptions${
@@ -599,7 +607,7 @@ const generateQueryHook = (
         mutator?.isHook
           ? `ReturnType<typeof use${pascal(operationName)}Hook>`
           : `typeof ${operationName}`
-      }>, ${definitions ? `{${definitions}}` : 'TVariables'}> = (${
+      }>, {${definitions}}> = (${
     properties ? 'props' : ''
   }) => {
           ${properties ? `const {${properties}} = props || {}` : ''};
@@ -615,9 +623,7 @@ const generateQueryHook = (
   })
         }
 
-      return useMutation<AsyncReturnType<typeof ${operationName}>, TError, ${
-    definitions ? `{${definitions}}` : 'TVariables'
-  }, TContext>(mutationFn, mutationOptions)
+      return useMutation<AsyncReturnType<typeof ${operationName}>, ${errorType}, {${definitions}}, unknown>(mutationFn, mutationOptions)
     }
     `;
 };
