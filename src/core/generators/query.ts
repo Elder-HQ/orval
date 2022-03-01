@@ -291,12 +291,16 @@ const generateQueryArguments = ({
   definitions,
   mutator,
   isRequestOptions,
+  errorType,
+  dataType,
   type,
 }: {
   operationName: string;
   definitions: string;
   mutator?: GeneratorMutator;
   isRequestOptions: boolean;
+  errorType: string;
+  dataType: string;
   type?: QueryType;
 }) => {
   const isMutatorHook = mutator?.isHook;
@@ -305,7 +309,7 @@ const generateQueryArguments = ({
         isMutatorHook
           ? `ReturnType<typeof use${pascal(operationName)}Hook>`
           : `typeof ${operationName}`
-      }>, TError, TData>`
+      }>, ${errorType}, ${dataType}>`
     : `UseMutationOptions<AsyncReturnType<${
         isMutatorHook
           ? `ReturnType<typeof use${pascal(operationName)}Hook>`
@@ -381,7 +385,7 @@ const generateQueryImplementation = ({
 
   const returnType =
     outputClient !== OutputClient.SVELTE_QUERY
-      ? ` Use${pascal(type)}Result<TData, TError>`
+      ? ` Use${pascal(type)}Result<${dataType}, ${errorType}>`
       : `Use${pascal(type)}StoreResult<AsyncReturnType<${
           mutator?.isHook
             ? `ReturnType<typeof use${pascal(operationName)}Hook>`
@@ -395,6 +399,8 @@ export const ${camel(`use-${name}`)} = (\n ${queryProps} ${generateQueryArgument
     mutator,
     isRequestOptions,
     type,
+    errorType,
+    dataType,
   })}\n  ): ${returnType} & { queryKey: QueryKey } => {
 
   ${
@@ -439,7 +445,7 @@ export const ${camel(`use-${name}`)} = (\n ${queryProps} ${generateQueryArgument
     mutator?.isHook
       ? `ReturnType<typeof use${pascal(operationName)}Hook>`
       : `typeof ${operationName}`
-  }>, TError, TData>(queryKey, queryFn, ${generateQueryOptions({
+  }>, ${errorType}, ${dataType}>(queryKey, queryFn, ${generateQueryOptions({
     params,
     options,
     type,
@@ -553,6 +559,12 @@ const generateQueryHook = (
       : response.definition.errors || 'unknown';
   }
 
+  const dataType = `AsyncReturnType<${
+      mutator?.isHook
+          ? `ReturnType<typeof use${pascal(operationName)}Hook>`
+          : `typeof ${operationName}`
+  }>`
+
   return `
     export const ${camel(`use-${operationName}`)} = <TError = ${errorType},
     ${!definitions ? `TVariables = void,` : ''}
@@ -561,6 +573,8 @@ const generateQueryHook = (
       definitions,
       mutator,
       isRequestOptions,
+      errorType,
+      dataType,
     })}) => {
       ${
         isRequestOptions
