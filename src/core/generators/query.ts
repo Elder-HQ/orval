@@ -363,6 +363,22 @@ const generateQueryImplementation = ({
         .join(',')
     : properties;
 
+  const dataType = `AsyncReturnType<${
+    mutator?.isHook
+        ? `ReturnType<typeof use${pascal(operationName)}Hook>`
+        : `typeof ${operationName}`
+  }>`
+
+  let errorType = `AxiosError<${response.definition.errors || 'unknown'}>`;
+
+  if (mutator) {
+    errorType = mutator.hasErrorType
+        ? `${mutator.default ? pascal(operationName) : ''}ErrorType<${
+            response.definition.errors || 'unknown'
+        }>`
+        : response.definition.errors || 'unknown';
+  }
+
   const returnType =
     outputClient !== OutputClient.SVELTE_QUERY
       ? ` Use${pascal(type)}Result<TData, TError>`
@@ -370,24 +386,10 @@ const generateQueryImplementation = ({
           mutator?.isHook
             ? `ReturnType<typeof use${pascal(operationName)}Hook>`
             : `typeof ${operationName}`
-        }>, TError, TData, QueryKey>`;
-
-  let errorType = `AxiosError<${response.definition.errors || 'unknown'}>`;
-
-  if (mutator) {
-    errorType = mutator.hasErrorType
-      ? `${mutator.default ? pascal(operationName) : ''}ErrorType<${
-          response.definition.errors || 'unknown'
-        }>`
-      : response.definition.errors || 'unknown';
-  }
+        }>, ${errorType}, ${dataType}, QueryKey>`;
 
   return `
-export const ${camel(`use-${name}`)} = <TData = AsyncReturnType<${
-    mutator?.isHook
-      ? `ReturnType<typeof use${pascal(operationName)}Hook>`
-      : `typeof ${operationName}`
-  }>, TError = ${errorType}>(\n ${queryProps} ${generateQueryArguments({
+export const ${camel(`use-${name}`)} = (\n ${queryProps} ${generateQueryArguments({
     operationName,
     definitions: '',
     mutator,
