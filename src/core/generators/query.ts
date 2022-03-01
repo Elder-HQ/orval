@@ -82,6 +82,7 @@ const REACT_QUERY_DEPENDENCIES: GeneratorDependency[] = [
       { name: 'QueryFunction', importAs: 'type QueryFunction' },
       { name: 'MutationFunction', importAs: 'type MutationFunction' },
       { name: 'UseQueryResult', importAs: 'type UseQueryResult' },
+      { name: 'UseMutationResult', importAs: 'type UseMutationResult' },
       {
         name: 'UseInfiniteQueryResult',
         importAs: 'type UseInfiniteQueryResult',
@@ -291,12 +292,16 @@ const generateQueryArguments = ({
   definitions,
   mutator,
   isRequestOptions,
+  errorType,
+  dataType,
   type,
 }: {
   operationName: string;
   definitions: string;
   mutator?: GeneratorMutator;
   isRequestOptions: boolean;
+  errorType: string;
+  dataType: string;
   type?: QueryType;
 }) => {
   const isMutatorHook = mutator?.isHook;
@@ -305,12 +310,12 @@ const generateQueryArguments = ({
         isMutatorHook
           ? `ReturnType<typeof use${pascal(operationName)}Hook>`
           : `typeof ${operationName}`
-      }>, TError, TData>`
+      }>, ${errorType}, ${dataType}>`
     : `UseMutationOptions<AsyncReturnType<${
         isMutatorHook
           ? `ReturnType<typeof use${pascal(operationName)}Hook>`
           : `typeof ${operationName}`
-      }>, TError,${definitions ? `{${definitions}}` : 'TVariables'}, TContext>`;
+      }>, ${errorType}, {${definitions}}, unknown>`;
 
   if (!isRequestOptions) {
     return `${type ? 'queryOptions' : 'mutationOptions'}?: ${definition}`;
@@ -363,36 +368,40 @@ const generateQueryImplementation = ({
         .join(',')
     : properties;
 
-  const returnType =
-    outputClient !== OutputClient.SVELTE_QUERY
-      ? ` Use${pascal(type)}Result<TData, TError>`
-      : `Use${pascal(type)}StoreResult<AsyncReturnType<${
-          mutator?.isHook
-            ? `ReturnType<typeof use${pascal(operationName)}Hook>`
-            : `typeof ${operationName}`
-        }>, TError, TData, QueryKey>`;
+  const dataType = `AsyncReturnType<${
+    mutator?.isHook
+        ? `ReturnType<typeof use${pascal(operationName)}Hook>`
+        : `typeof ${operationName}`
+  }>`
 
   let errorType = `AxiosError<${response.definition.errors || 'unknown'}>`;
 
   if (mutator) {
     errorType = mutator.hasErrorType
-      ? `${mutator.default ? pascal(operationName) : ''}ErrorType<${
-          response.definition.errors || 'unknown'
+        ? `${mutator.default ? pascal(operationName) : ''}ErrorType<${
+            response.definition.errors || 'unknown'
         }>`
-      : response.definition.errors || 'unknown';
+        : response.definition.errors || 'unknown';
   }
 
+  const returnType =
+    outputClient !== OutputClient.SVELTE_QUERY
+      ? ` Use${pascal(type)}Result<${dataType}, ${errorType}>`
+      : `Use${pascal(type)}StoreResult<AsyncReturnType<${
+          mutator?.isHook
+            ? `ReturnType<typeof use${pascal(operationName)}Hook>`
+            : `typeof ${operationName}`
+        }>, ${errorType}, ${dataType}, QueryKey>`;
+
   return `
-export const ${camel(`use-${name}`)} = <TData = AsyncReturnType<${
-    mutator?.isHook
-      ? `ReturnType<typeof use${pascal(operationName)}Hook>`
-      : `typeof ${operationName}`
-  }>, TError = ${errorType}>(\n ${queryProps} ${generateQueryArguments({
+export const ${camel(`use-${name}`)} = (\n ${queryProps} ${generateQueryArguments({
     operationName,
     definitions: '',
     mutator,
     isRequestOptions,
     type,
+    errorType,
+    dataType,
   })}\n  ): ${returnType} & { queryKey: QueryKey } => {
 
   ${
@@ -437,7 +446,7 @@ export const ${camel(`use-${name}`)} = <TData = AsyncReturnType<${
     mutator?.isHook
       ? `ReturnType<typeof use${pascal(operationName)}Hook>`
       : `typeof ${operationName}`
-  }>, TError, TData>(queryKey, queryFn, ${generateQueryOptions({
+  }>, ${errorType}, ${dataType}>(queryKey, queryFn, ${generateQueryOptions({
     params,
     options,
     type,
@@ -551,15 +560,30 @@ const generateQueryHook = (
       : response.definition.errors || 'unknown';
   }
 
+  const dataType = `AsyncReturnType<${
+      mutator?.isHook
+          ? `ReturnType<typeof use${pascal(operationName)}Hook>`
+          : `typeof ${operationName}`
+  }>`
+
+  const returnType =
+      outputClient !== OutputClient.SVELTE_QUERY
+          ? ` UseMutationResult<${dataType}, ${errorType}, {${definitions}}, unknown>`
+          : `UseMutationStoreResult<AsyncReturnType<${
+              mutator?.isHook
+                  ? `ReturnType<typeof use${pascal(operationName)}Hook>`
+                  : `typeof ${operationName}`
+          }>, ${errorType}, ${dataType}, QueryKey>`;
+
   return `
-    export const ${camel(`use-${operationName}`)} = <TError = ${errorType},
-    ${!definitions ? `TVariables = void,` : ''}
-    TContext = unknown>(${generateQueryArguments({
+    export const ${camel(`use-${operationName}`)} = (${generateQueryArguments({
       operationName,
       definitions,
       mutator,
       isRequestOptions,
-    })}) => {
+      errorType,
+      dataType,
+    })}): ${returnType} => {
       ${
         isRequestOptions
           ? `const {mutation: mutationOptions${
@@ -583,7 +607,7 @@ const generateQueryHook = (
         mutator?.isHook
           ? `ReturnType<typeof use${pascal(operationName)}Hook>`
           : `typeof ${operationName}`
-      }>, ${definitions ? `{${definitions}}` : 'TVariables'}> = (${
+      }>, {${definitions}}> = (${
     properties ? 'props' : ''
   }) => {
           ${properties ? `const {${properties}} = props || {}` : ''};
@@ -599,9 +623,7 @@ const generateQueryHook = (
   })
         }
 
-      return useMutation<AsyncReturnType<typeof ${operationName}>, TError, ${
-    definitions ? `{${definitions}}` : 'TVariables'
-  }, TContext>(mutationFn, mutationOptions)
+      return useMutation<AsyncReturnType<typeof ${operationName}>, ${errorType}, {${definitions}}, unknown>(mutationFn, mutationOptions)
     }
     `;
 };
@@ -614,10 +636,8 @@ export const generateQueryHeader = ({
 }: {
   isRequestOptions: boolean;
   isMutator: boolean;
-}) => `// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type AsyncReturnType<
-T extends (...args: any) => Promise<any>
-> = T extends (...args: any) => Promise<infer R> ? R : any;\n\n
+}) => `type AsyncReturnType<T extends (...args: any) => Promise<any>> = Awaited<ReturnType<T>>
+
 ${
   isRequestOptions && isMutator
     ? `// eslint-disable-next-line @typescript-eslint/no-explicit-any
