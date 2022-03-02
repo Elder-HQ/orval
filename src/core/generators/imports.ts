@@ -61,18 +61,22 @@ export const generateMutatorImports = (
   )
     .map((mutator) => {
       const importDefault = mutator.default
-        ? `${mutator.name}${
-            mutator.hasErrorType
-              ? `, { ErrorType as ${mutator.errorTypeName} }`
-              : ''
-          }`
-        : `{ ${mutator.name}${
-            mutator.hasErrorType ? `, type ${mutator.errorTypeName}` : ''
-          } }`;
+        ? mutator.name
+        : `{ ${mutator.name} }`;
+      const importError = mutator.hasErrorType
+        ? mutator.default
+          ? `{ ErrorType as ${mutator.errorTypeName} }`
+          : `{ ${mutator.errorTypeName} }`
+        : '';
 
-      return `import ${importDefault} from '${oneMore ? '../' : ''}${
-        mutator.path
-      }'`;
+      return (
+        `import ${importDefault} from '${oneMore ? '../' : ''}${mutator.path}'` +
+        (importError
+          ? `\nimport type ${importError} from '${oneMore ? '../' : ''}${
+              mutator.path
+            }'`
+          : '')
+      );
     })
     .join('\n');
 
@@ -105,7 +109,9 @@ export const addDependency = ({
   const groupedBySpecKey = toAdds.reduce<
     Record<string, { deps: GeneratorImport[]; values: boolean }>
   >((acc, dep) => {
-    const key = hasSchemaDir && dep.specKey ? dep.specKey : 'default';
+    const key = `${hasSchemaDir && dep.specKey ? dep.specKey : 'default'}-${
+      dep.values ? 'values' : 'types'
+    }`;
 
     acc[key] = {
       values:
@@ -133,9 +139,7 @@ export const addDependency = ({
       const depsString = uniq(
         deps
           .filter((e) => !e.default && !e.syntheticDefaultImport)
-          .map(({ name, alias, importAs }) =>
-            importAs ? importAs : alias ? `${name} as ${alias}` : name,
-          ),
+          .map(({ name, alias }) => (alias ? `${name} as ${alias}` : name)),
       ).join(',\n  ');
 
       let importString = '';

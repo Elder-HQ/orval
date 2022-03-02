@@ -27,7 +27,6 @@ export type GeneratorImport = {
   specKey?: string;
   default?: boolean;
   values?: boolean;
-  importAs?: string;
   syntheticDefaultImport?: boolean;
 };
 
