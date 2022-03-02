@@ -73,21 +73,15 @@ const REACT_QUERY_DEPENDENCIES: GeneratorDependency[] = [
       { name: 'useQuery', values: true },
       { name: 'useInfiniteQuery', values: true },
       { name: 'useMutation', values: true },
-      { name: 'UseQueryOptions', importAs: 'type UseQueryOptions' },
-      {
-        name: 'UseInfiniteQueryOptions',
-        importAs: 'type UseInfiniteQueryOptions',
-      },
-      { name: 'UseMutationOptions', importAs: 'type UseMutationOptions' },
-      { name: 'QueryFunction', importAs: 'type QueryFunction' },
-      { name: 'MutationFunction', importAs: 'type MutationFunction' },
-      { name: 'UseQueryResult', importAs: 'type UseQueryResult' },
-      { name: 'UseMutationResult', importAs: 'type UseMutationResult' },
-      {
-        name: 'UseInfiniteQueryResult',
-        importAs: 'type UseInfiniteQueryResult',
-      },
-      { name: 'QueryKey', importAs: 'type QueryKey' },
+      { name: 'UseQueryOptions' },
+      { name: 'UseInfiniteQueryOptions' },
+      { name: 'UseMutationOptions' },
+      { name: 'QueryFunction' },
+      { name: 'MutationFunction' },
+      { name: 'UseQueryResult' },
+      { name: 'UseMutationResult' },
+      { name: 'UseInfiniteQueryResult' },
+      { name: 'QueryKey' },
     ],
     dependency: 'react-query',
   },
@@ -370,18 +364,18 @@ const generateQueryImplementation = ({
 
   const dataType = `AsyncReturnType<${
     mutator?.isHook
-        ? `ReturnType<typeof use${pascal(operationName)}Hook>`
-        : `typeof ${operationName}`
-  }>`
+      ? `ReturnType<typeof use${pascal(operationName)}Hook>`
+      : `typeof ${operationName}`
+  }>`;
 
   let errorType = `AxiosError<${response.definition.errors || 'unknown'}>`;
 
   if (mutator) {
     errorType = mutator.hasErrorType
-        ? `${mutator.default ? pascal(operationName) : ''}ErrorType<${
-            response.definition.errors || 'unknown'
+      ? `${mutator.default ? pascal(operationName) : ''}ErrorType<${
+          response.definition.errors || 'unknown'
         }>`
-        : response.definition.errors || 'unknown';
+      : response.definition.errors || 'unknown';
   }
 
   const returnType =
@@ -394,7 +388,9 @@ const generateQueryImplementation = ({
         }>, ${errorType}, ${dataType}, QueryKey>`;
 
   return `
-export const ${camel(`use-${name}`)} = (\n ${queryProps} ${generateQueryArguments({
+export const ${camel(
+    `use-${name}`,
+  )} = (\n ${queryProps} ${generateQueryArguments({
     operationName,
     definitions: '',
     mutator,
@@ -561,29 +557,29 @@ const generateQueryHook = (
   }
 
   const dataType = `AsyncReturnType<${
-      mutator?.isHook
-          ? `ReturnType<typeof use${pascal(operationName)}Hook>`
-          : `typeof ${operationName}`
-  }>`
+    mutator?.isHook
+      ? `ReturnType<typeof use${pascal(operationName)}Hook>`
+      : `typeof ${operationName}`
+  }>`;
 
   const returnType =
-      outputClient !== OutputClient.SVELTE_QUERY
-          ? ` UseMutationResult<${dataType}, ${errorType}, {${definitions}}, unknown>`
-          : `UseMutationStoreResult<AsyncReturnType<${
-              mutator?.isHook
-                  ? `ReturnType<typeof use${pascal(operationName)}Hook>`
-                  : `typeof ${operationName}`
-          }>, ${errorType}, ${dataType}, QueryKey>`;
+    outputClient !== OutputClient.SVELTE_QUERY
+      ? ` UseMutationResult<${dataType}, ${errorType}, {${definitions}}, unknown>`
+      : `UseMutationStoreResult<AsyncReturnType<${
+          mutator?.isHook
+            ? `ReturnType<typeof use${pascal(operationName)}Hook>`
+            : `typeof ${operationName}`
+        }>, ${errorType}, ${dataType}, QueryKey>`;
 
   return `
     export const ${camel(`use-${operationName}`)} = (${generateQueryArguments({
-      operationName,
-      definitions,
-      mutator,
-      isRequestOptions,
-      errorType,
-      dataType,
-    })}): ${returnType} => {
+    operationName,
+    definitions,
+    mutator,
+    isRequestOptions,
+    errorType,
+    dataType,
+  })}): ${returnType} => {
       ${
         isRequestOptions
           ? `const {mutation: mutationOptions${
@@ -607,9 +603,7 @@ const generateQueryHook = (
         mutator?.isHook
           ? `ReturnType<typeof use${pascal(operationName)}Hook>`
           : `typeof ${operationName}`
-      }>, {${definitions}}> = (${
-    properties ? 'props' : ''
-  }) => {
+      }>, {${definitions}}> = (${properties ? 'props' : ''}) => {
           ${properties ? `const {${properties}} = props || {}` : ''};
 
           return  ${operationName}(${properties}${properties ? ',' : ''}${
